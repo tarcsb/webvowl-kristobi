@@ -1,65 +1,64 @@
 #!/bin/bash
 
-echo "🧠 Vite + Kristobi Fix Script (macOS-compatible)"
+echo "🔧 Kristobi Vite Fix & Netlify Prep (macOS M1/M2/M4 Compatible)"
+echo "--------------------------------------------------------------"
 
-# 1. Detect missing file
-if [ ! -f "index.html" ]; then
-  echo "❌ Missing index.html in project root."
+# Step 1: Ensure clean index.html
+if [ -f "index.html" ]; then
+  echo "🧹 Cleaning up CommonJS-style imports..."
+  sed -i '' '/sidebar\.js/d' index.html
+else
+  echo "❌ index.html missing. Exiting."
   exit 1
 fi
 
-# 2. Look for real JS entry file
-echo "🔍 Searching for entry file candidates in /src..."
-ENTRY_FILE=$(find src -type f \( -name '*.js' -o -name '*.ts' \) | grep -Ei '(app|main|index)' | head -n1)
-
-if [ -z "$ENTRY_FILE" ]; then
-  echo "⚠️ No entry file found in /src. Creating fallback entry file..."
-  mkdir -p src
-  ENTRY_FILE="src/main.js"
-  echo 'console.log("Kristobi demo graph initialized.")' > "$ENTRY_FILE"
-fi
-
-echo "✅ Using entry file: $ENTRY_FILE"
-
-# 3. Fix index.html with macOS-safe sed
-ENTRY_BASENAME=$(basename "$ENTRY_FILE")
-sed -i '' "s|src=\"/src/.*.js\"|src=\"/$ENTRY_FILE\"|" index.html
-
-# 4. Create netlify.toml if not present
-if [ ! -f netlify.toml ]; then
-  echo "📝 Writing netlify.toml..."
-  cat > netlify.toml <<EOL
-[build]
-  command = "npm run build"
-  publish = "dist"
-EOL
-fi
-
-# 5. Check/patch package.json build scripts
-echo "🧪 Ensuring correct scripts in package.json..."
+# Step 2: Ensure build scripts are present
 if ! grep -q '"build":' package.json; then
+  echo "⚙️  Adding Vite build scripts to package.json..."
   npx json -I -f package.json -e 'this.scripts.build="vite build"'
   npx json -I -f package.json -e 'this.scripts.dev="vite"'
   npx json -I -f package.json -e 'this.scripts.preview="vite preview"'
 fi
 
-# 6. Build the project
-echo "🏗️ Running Vite production build..."
+# Step 3: Fallback entry file (if needed)
+if [ ! -f "src/app/main.js" ]; then
+  echo "📄 Creating fallback JS entry: src/app/main.js"
+  mkdir -p src/app
+  echo 'console.log("Kristobi viewer running.");' > src/app/main.js
+fi
+
+# Step 4: Fix script path in index.html (macOS-safe)
+echo "🔗 Updating entry <script> to match actual file..."
+sed -i '' 's|src="/src/.*.js"|src="/src/app/main.js"|' index.html
+
+# Step 5: Write Netlify config
+echo "📝 Creating netlify.toml (if missing)..."
+cat > netlify.toml <<EOL
+[build]
+  command = "npm run build"
+  publish = "dist"
+EOL
+
+# Step 6: Install deps and build
+echo "📦 Installing dependencies..."
 npm install
+
+echo "🏗️  Building site with Vite..."
 npm run build || {
-  echo "❌ Build failed. Check entry path or Vite config."
+  echo "❌ Vite build failed. Check entry path and module types."
   exit 1
 }
 
-echo "✅ Build complete. Output is in /dist"
-
-# 7. Git commit + push (optional)
+# Step 7: Git push
+echo "📤 Committing and pushing..."
 git add .
-git commit -m "Fix Vite build path and add entry JS file" || echo "ℹ️ No new changes."
+git commit -m "Fix Vite entry & prepare for Netlify" || echo "ℹ️ Nothing to commit"
 git push origin $(git branch --show-current)
 
-# 8. Embed snippet for Squarespace
+# Final instructions
 echo ""
-echo "🧩 Embed this iframe in Squarespace:"
+echo "✅ Build successful!"
+echo "🎉 Netlify will now deploy from: /dist"
 echo ""
-echo "<iframe src=\"https://YOUR-NETLIFY-SITE.netlify.app\" width=\"100%\" height=\"600\" style=\"border:none;\"></iframe>"
+echo "🧩 Embed in Squarespace:"
+echo "<iframe src=\"https://YOUR-SITE.netlify.app\" width=\"100%\" height=\"600\" style=\"border:none;\"></iframe>"

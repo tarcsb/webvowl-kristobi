@@ -44,7 +44,10 @@
     "package": "grunt package",
     "release": "grunt release",
     "test": "grunt test-ci",
-    "webserver": "grunt webserver"
+    "webserver": "grunt webserver",
+    "build": "vite build",
+    "dev": "vite",
+    "preview": "vite preview"
   },
   "license": "MIT",
   "private": true
